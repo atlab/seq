@@ -241,7 +241,7 @@ class DemuxRead(dj.Imported):
         nreads = count_lines(filenames[0])/4
         with gzip.open(filenames[0], 'rt') as f:
             chunk_size=2000
-	    source = generate_reads(zip(f, f, f, f), key)
+            source = generate_reads(zip(f, f, f, f), key)
             get_chunk = lambda: list(itertools.islice(source, chunk_size))
             with tqdm(total=nreads) as progress:
                 for chunk in iter(get_chunk, []):
