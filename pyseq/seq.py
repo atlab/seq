@@ -244,7 +244,7 @@ class DemuxRead(dj.Imported):
                 pool_id, lib_id = (PooledSample() & key).fetch1['pool_id', 'lib_id']
                 source = generate_elements(zip(f, f, f, f), key, pool_id, lib_id)
                 get_chunk = lambda: list(itertools.islice(source, chunk_size))
-                for chunk in iter(get_chunk, []):
+                for chunk in tqdm(iter(get_chunk, [])):
                     self.insert(chunk)
 
 
