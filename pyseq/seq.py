@@ -228,24 +228,24 @@ class DemuxRead(dj.Imported):
 
     def _make_tuples(self, key):
 
-        def generate_elements(source, key, pool_id, lib_id):
+        def generate_reads(source, key):
             for rec in source:
-                yield dict(key,
-                           lib_id=lib_id,
-                           pool_id=pool_id,
-                           read_id=':'.join(rec[0].split(':')[3:7]).split(' ')[0])
+                yield dict(key, read_id=':'.join(rec[0].split(':')[3:7]).split(' ')[0])
 
         # imports from demultiplexed datasets
         file_mask = (Run() & key).fetch1['file_pattern']
-        folder = key['lib_samp_id']
-        for filename in glob.glob(os.path.join(folder, '*.gz')):
-            with gzip.open(filename, 'rt') as f:
-                key['lib_samp_id'] = os.path.basename(folder)
-                pool_id, lib_id = (PooledSample() & key).fetch1['pool_id', 'lib_id']
-                source = generate_elements(zip(f, f, f, f), key, pool_id, lib_id)
-                get_chunk = lambda: list(itertools.islice(source, chunk_size))
-                for chunk in tqdm(iter(get_chunk, [])):
+        mask = os.path.join(file_mask, key['lib_samp_id'], '*.gz') 
+        filenames = glob.glob(mask)
+        if len(filenames)!=1:
+             raise Exception('One file is expected in ' + mask)
+        nreads = count_lines(filenames[0])/4
+        with gzip.open(filenames[0], 'rt') as f:
+            chunk_size=2000
+	    source = generate_reads(zip(f, f, f, f), key)
+            get_chunk = lambda: list(itertools.islice(source, chunk_size))
+            with tqdm(total=nreads) as progress:
+                for chunk in iter(get_chunk, []):
                     self.insert(chunk)
-
+                    progress.update(chunk_size)
 
 schema.spawn_missing_classes()
