@@ -224,7 +224,7 @@ class DemuxRead(dj.Imported):
     ->PooledSample
     """
 
-    key_source = Lane()*DemuxInfo()
+    key_source = Lane()*DemuxInfo()*PooledSample()
 
     def _make_tuples(self, key):
 
@@ -237,19 +237,15 @@ class DemuxRead(dj.Imported):
 
         # imports from demultiplexed datasets
         file_mask = (Run() & key).fetch1['file_pattern']
-        folders = glob.glob(file_mask)
-        if not folders:
-            raise Exception('No matching files found')
-        chunk_size = 8000
-        for folder in tqdm(folders):
-            for filename in glob.glob(os.path.join(folder, '*.gz')):
-                with gzip.open(filename, 'rt') as f:
-                    key['lib_samp_id'] = os.path.basename(folder)
-                    pool_id, lib_id = (PooledSample() & key).fetch1['pool_id', 'lib_id']
-                    source = generate_elements(zip(f, f, f, f), key, pool_id, lib_id)
-                    get_chunk = lambda: list(itertools.islice(source, chunk_size))
-                    for chunk in iter(get_chunk, []):
-                        self.insert(chunk)
+        folder = key['lib_samp_id']
+        for filename in glob.glob(os.path.join(folder, '*.gz')):
+            with gzip.open(filename, 'rt') as f:
+                key['lib_samp_id'] = os.path.basename(folder)
+                pool_id, lib_id = (PooledSample() & key).fetch1['pool_id', 'lib_id']
+                source = generate_elements(zip(f, f, f, f), key, pool_id, lib_id)
+                get_chunk = lambda: list(itertools.islice(source, chunk_size))
+                for chunk in iter(get_chunk, []):
+                    self.insert(chunk)
 
 
 schema.spawn_missing_classes()
